@@ -1,0 +1,132 @@
+/* Rich-text content inside text containers (Tiptap / ProseMirror). */
+.text-box-editor {
+  padding: 6px 10px;
+  outline: none;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  user-select: text;
+  -webkit-user-select: text;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  cursor: text;
+}
+
+.text-box-editor > :first-child {
+  margin-top: 0;
+}
+
+.text-box-editor > :last-child {
+  margin-bottom: 0;
+}
+
+.text-box-editor p {
+  margin: 0 0 0.35em;
+}
+
+.text-box-editor h1,
+.text-box-editor h2,
+.text-box-editor h3 {
+  margin: 0.5em 0 0.3em;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.text-box-editor h1 {
+  font-size: 1.6em;
+}
+
+.text-box-editor h2 {
+  font-size: 1.3em;
+}
+
+.text-box-editor h3 {
+  font-size: 1.12em;
+}
+
+.text-box-editor ul,
+.text-box-editor ol {
+  margin: 0.2em 0 0.4em;
+  padding-left: 1.4em;
+}
+
+.text-box-editor li > p {
+  margin: 0;
+}
+
+.text-box-editor ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.1em;
+}
+
+.text-box-editor ul[data-type='taskList'] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.text-box-editor ul[data-type='taskList'] > li > label {
+  flex: none;
+  margin-top: 0.22em;
+  user-select: none;
+}
+
+.text-box-editor ul[data-type='taskList'] > li > label input {
+  width: 1em;
+  height: 1em;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.text-box-editor ul[data-type='taskList'] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.text-box-editor ul[data-type='taskList'] > li[data-checked='true'] > div {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.text-box-editor code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--code-bg);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.text-box-editor pre {
+  margin: 0.4em 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-s);
+  background: var(--code-bg);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.text-box-editor pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.86em;
+  line-height: 1.5;
+}
+
+.text-box-editor blockquote {
+  margin: 0.4em 0;
+  padding-left: 0.9em;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-muted);
+}
+
+.text-box-editor a {
+  color: var(--accent);
+}
+
+.text-box-editor hr {
+  border: none;
+  border-top: 1px solid var(--border-strong);
+  margin: 0.8em 0;
+}

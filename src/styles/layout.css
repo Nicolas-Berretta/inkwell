@@ -1,0 +1,245 @@
+.app {
+  display: flex;
+  height: 100%;
+}
+
+.workspace {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  flex: none;
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.page-title {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: transparent;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+}
+
+.page-title::placeholder {
+  color: var(--text-faint);
+}
+
+.page-title:hover {
+  border-color: var(--border);
+}
+
+.page-title:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-raised);
+}
+
+.page-title.is-placeholder {
+  display: flex;
+  align-items: center;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+
+.page-title.is-placeholder:hover {
+  border-color: transparent;
+}
+
+.topbar-controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.select-field select {
+  height: 30px;
+  padding: 0 26px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background-color: var(--bg-raised);
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 13px, calc(100% - 9px) 13px;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  appearance: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.zoom-control {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--bg-raised);
+}
+
+.zoom-control .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.zoom-value {
+  min-width: 50px;
+  height: 28px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  border-radius: 4px;
+}
+
+.zoom-value:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.canvas-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.empty-state {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--bg-canvas);
+  color: var(--text-muted);
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+/* Floating tool palette */
+.toolbar-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 10;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toolbar,
+.tool-options {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-float);
+}
+
+.tool-options {
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 36px;
+  border-radius: var(--radius-m);
+  color: var(--text-muted);
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.tool-button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tool-button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 5px;
+  background: var(--border);
+}
+
+.swatch {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+}
+
+.swatch::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.35);
+}
+
+/* Black ink is drawn white on a dark page; show the swatch the way the ink will look. */
+:root[data-theme='dark'] .swatch[data-ink='adaptive']::before {
+  background: #ffffff;
+}
+
+.swatch.is-active {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.size-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-s);
+}
+
+.size-option:hover {
+  background: var(--hover);
+}
+
+.size-option.is-active {
+  background: var(--accent-soft);
+}
+
+.size-dot {
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.size-option.is-active .size-dot {
+  background: var(--accent);
+}

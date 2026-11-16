@@ -1,0 +1,67 @@
+/* Design tokens. Every colour in the UI comes from these custom properties. */
+:root {
+  color-scheme: light;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+
+  --bg-app: #f3f2ef;
+  --bg-panel: #faf9f7;
+  --bg-raised: #ffffff;
+  --bg-canvas: #ffffff;
+  --text: #201f1d;
+  --text-muted: #6d6a64;
+  --text-faint: #9a968f;
+  --border: #e3e0d9;
+  --border-strong: #cfcbc2;
+  --hover: rgba(30, 28, 24, 0.055);
+  --pressed: rgba(30, 28, 24, 0.09);
+  --accent: #6a4fc4;
+  --accent-text: #ffffff;
+  --accent-soft: rgba(106, 79, 196, 0.12);
+  --danger: #c9372c;
+  --danger-soft: rgba(201, 55, 44, 0.1);
+  --mark: rgba(255, 214, 64, 0.55);
+  --code-bg: #f1efea;
+  --shadow-float: 0 1px 2px rgba(20, 18, 14, 0.06), 0 8px 24px rgba(20, 18, 14, 0.1);
+  --shadow-dialog: 0 16px 48px rgba(20, 18, 14, 0.22);
+  --backdrop: rgba(24, 22, 18, 0.32);
+
+  /* Highlighter canvas compositing: multiply keeps dark text readable under the ink. */
+  --highlight-blend: multiply;
+  --highlight-opacity: 0.8;
+
+  --radius-s: 6px;
+  --radius-m: 9px;
+  --radius-l: 14px;
+  --sidebar-width: 392px;
+  --topbar-height: 48px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-app: #18181a;
+  --bg-panel: #1f1f22;
+  --bg-raised: #2a2a2e;
+  --bg-canvas: #1c1c1f;
+  --text: #ececef;
+  --text-muted: #a2a2aa;
+  --text-faint: #74747c;
+  --border: #303034;
+  --border-strong: #45454b;
+  --hover: rgba(255, 255, 255, 0.06);
+  --pressed: rgba(255, 255, 255, 0.1);
+  --accent: #a894f0;
+  --accent-text: #17131f;
+  --accent-soft: rgba(168, 148, 240, 0.16);
+  --danger: #f0776c;
+  --danger-soft: rgba(240, 119, 108, 0.14);
+  --mark: rgba(214, 170, 30, 0.5);
+  --code-bg: #2a2a2f;
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --backdrop: rgba(0, 0, 0, 0.5);
+
+  /* On a dark page the equivalent of multiply is screen: it lightens the paper, never the light text. */
+  --highlight-blend: screen;
+  --highlight-opacity: 0.4;
+}

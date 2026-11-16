@@ -1,0 +1,272 @@
+/*
+ * Canvas stage. Stacking order (bottom to top):
+ *   background canvas -> image layer (DOM) -> text layer (DOM) -> ink canvas ->
+ *   highlighter canvas -> live canvas
+ * Images are always below ink, so they can be written and highlighted on.
+ * The canvases and images never receive pointer events; the stage element does. Text
+ * boxes only become interactive while the Text tool is active, so drawing
+ * tools can ink straight over them.
+ */
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bg-canvas);
+  /* Blend modes of the highlighter canvases are resolved against this element only. */
+  isolation: isolate;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  contain: strict;
+}
+
+.stage-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  /* Ink canvases are briefly rescaled from their top-left corner while a dense page is zoomed. */
+  transform-origin: 0 0;
+}
+
+.stage-background {
+  z-index: 0;
+}
+
+.image-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 1;
+  transform-origin: 0 0;
+  pointer-events: none;
+  /* Keeps the images' own stacking order from interleaving with the layers above. */
+  isolation: isolate;
+  --inv-zoom: 1;
+}
+
+.canvas-image {
+  position: absolute;
+  pointer-events: none;
+}
+
+.canvas-image[hidden] {
+  display: none;
+}
+
+.canvas-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-user-drag: none;
+}
+
+/* An image whose data cannot be decoded keeps its place and stays selectable. */
+.canvas-image.is-broken {
+  border: 1px dashed var(--border-strong);
+  background: var(--hover);
+}
+
+.canvas-image.is-broken img {
+  visibility: hidden;
+}
+
+/* Lock indicator: counter-scaled so it keeps a constant on-screen size at any zoom. */
+.canvas-image-lock {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  opacity: 0.9;
+  transform: translate(calc(6px * var(--inv-zoom)), calc(6px * var(--inv-zoom))) scale(var(--inv-zoom));
+  transform-origin: 0 0;
+}
+
+.canvas-image.is-locked .canvas-image-lock {
+  display: flex;
+}
+
+.text-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 2;
+  transform-origin: 0 0;
+  pointer-events: none;
+  --inv-zoom: 1;
+}
+
+.stage-ink {
+  z-index: 3;
+}
+
+.stage-highlight {
+  z-index: 4;
+  mix-blend-mode: var(--highlight-blend);
+  opacity: var(--highlight-opacity);
+}
+
+.stage-live {
+  z-index: 5;
+}
+
+/* A highlighter stroke in progress composites exactly like committed highlighter ink. */
+.stage-live.is-highlighter {
+  mix-blend-mode: var(--highlight-blend);
+  opacity: var(--highlight-opacity);
+}
+
+/* Text containers */
+.text-box {
+  position: absolute;
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.stage[data-tool='text']:not([data-panning]) .text-box {
+  pointer-events: auto;
+}
+
+.stage[data-tool='text'] .text-box:hover {
+  border-color: var(--border-strong);
+}
+
+.text-box.is-focused,
+.stage[data-tool='text'] .text-box.is-focused:hover {
+  border-color: var(--accent);
+}
+
+/* Handle + formatting bar: counter-scaled so they keep a constant on-screen size at any zoom. */
+.text-box-chrome {
+  position: absolute;
+  left: -1px;
+  bottom: 100%;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 5px;
+  transform: scale(var(--inv-zoom));
+  transform-origin: left bottom;
+  white-space: nowrap;
+}
+
+.stage[data-tool='text'] .text-box:hover .text-box-chrome,
+.text-box.is-focused .text-box-chrome {
+  display: flex;
+}
+
+.text-box-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  box-shadow: var(--shadow-float);
+  cursor: grab;
+  touch-action: none;
+}
+
+.text-box-grip:active {
+  cursor: grabbing;
+}
+
+.text-box-resize {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  width: 10px;
+  height: 100%;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.format-bar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 28px;
+  padding: 0 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-float);
+}
+
+.format-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.format-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.format-button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.format-divider {
+  width: 1px;
+  height: 14px;
+  margin: 0 3px;
+  background: var(--border);
+}
+
+/* Right-click menu of the canvas (positioned in viewport coordinates). */
+.context-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 60;
+  min-width: 208px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.context-menu .menu-item:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.context-menu-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.menu-shortcut {
+  margin-left: auto;
+  padding-left: 18px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-faint);
+}
