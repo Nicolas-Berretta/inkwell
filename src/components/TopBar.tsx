@@ -2,6 +2,7 @@ import { Minus, Moon, PanelLeft, Plus, Sun } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { getActiveEngine } from '../store/engineRegistry';
 import type { PageBackground } from '../types';
+import { SaveStatus } from './SaveStatus';
 
 const BACKGROUND_LABELS: Record<PageBackground, string> = {
   blank: 'Blank',
@@ -53,6 +54,7 @@ export function TopBar() {
       )}
 
       <div className="topbar-controls">
+        <SaveStatus />
         {page ? (
           <label className="select-field">
             <span className="visually-hidden">Page background</span>

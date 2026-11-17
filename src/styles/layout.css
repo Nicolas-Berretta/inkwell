@@ -214,6 +214,16 @@
   background: #ffffff;
 }
 
+/* ...and white ink is drawn black. */
+:root[data-theme='dark'] .swatch[data-ink='adaptive-light']::before {
+  background: #000000;
+}
+
+/* The selected colour gets a ring in the accent colour with a gap, visible on any swatch colour. */
+.swatch.is-active::before {
+  inset: 5px;
+}
+
 .swatch.is-active {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
@@ -242,4 +252,148 @@
 
 .size-option.is-active .size-dot {
   background: var(--accent);
+}
+
+/* Save indicator in the top bar: deliberately quiet unless something is wrong. */
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.save-status.is-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-status-spinner {
+  animation: save-status-spin 0.9s linear infinite;
+}
+
+@keyframes save-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-status-spinner {
+    animation: none;
+  }
+}
+
+/* Colour palette: inline favourites, then a popover with every colour. */
+.color-palette {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.more-colors {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 26px;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+}
+
+.more-colors:hover,
+.more-colors.is-open {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.color-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  z-index: 20;
+  width: 236px;
+  padding: 10px;
+  transform: translateX(-50%);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-float);
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  justify-items: center;
+}
+
+.color-grid .swatch {
+  width: 32px;
+  height: 32px;
+}
+
+.color-popover-section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.color-popover-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.color-popover-empty {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.custom-color {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin-top: 8px;
+  padding: 0 8px;
+  border-radius: var(--radius-s);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.custom-color:hover {
+  background: var(--hover);
+}
+
+/* The native colour input fills the row invisibly, so the whole row opens the system picker. */
+.custom-color input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.lasso-mode {
+  width: 32px;
+  height: 30px;
+  color: var(--text-muted);
+}
+
+.lasso-mode.is-active {
+  color: var(--accent);
 }

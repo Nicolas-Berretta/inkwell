@@ -44,6 +44,8 @@ const LOD_MAX_WIDTH_PX = 1.5;
 const LOD_MAX_EXTENT_PX = 6;
 /** Minimum centreline width (device px) so distant ink stays visible. */
 const LOD_MIN_LINE_PX = 0.9;
+/** A stroke whose centreline is shorter than this (world units) in both directions is a dot. */
+const DOT_EPSILON = 1e-6;
 /** A viewport repaint is "expensive" beyond this many strokes or this much scripting time. */
 const PREVIEW_STROKE_COUNT = 1200;
 const PREVIEW_COST_MS = 7;
@@ -263,58 +265,88 @@ export class StrokeLayer {
     return items.length;
   }
 
-  /** Paints items in order, batching consecutive low-detail strokes into a single stroke call. */
   private paintItems(items: readonly StrokeItem[], scale: number, offX: number, offY: number, theme: ThemeMode): void {
-    const ctx = this.ctx;
-    const minLineWidth = LOD_MIN_LINE_PX / scale;
-    let batchColor = '';
-    let batchWidth = 0;
-    let batchOpen = false;
-
-    const flush = () => {
-      if (!batchOpen) return;
-      ctx.setTransform(scale, 0, 0, scale, -offX, -offY);
-      ctx.strokeStyle = batchColor;
-      ctx.lineWidth = batchWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-      batchOpen = false;
-    };
-
-    for (const item of items) {
-      if (item.hidden) continue;
-      const bounds = item.bounds;
-      const extentPx = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) * scale;
-      const lowDetail = item.maxWidth * scale < LOD_MAX_WIDTH_PX || extentPx < LOD_MAX_EXTENT_PX;
-
-      if (!lowDetail) {
-        flush();
-        fillStrokeItem(ctx, this.model, item, scale, offX, offY, theme);
-        continue;
-      }
-
-      // Far-away ink: variable width and spline detail are sub-pixel here, so
-      // a centreline through the control points is visually identical.
-      const color = inkColor(item.record.color, theme);
-      const width = Math.max(item.averageWidth, minLineWidth);
-      const quantised = Math.round(width * 8) / 8;
-      if (!batchOpen || color !== batchColor || quantised !== batchWidth) {
-        flush();
-        ctx.beginPath();
-        batchOpen = true;
-        batchColor = color;
-        batchWidth = quantised;
-      }
-      const points = item.record.points;
-      ctx.moveTo(points[0], points[1]);
-      if (points.length === POINT_STRIDE) ctx.lineTo(points[0], points[1]);
-      for (let i = POINT_STRIDE; i + 2 < points.length; i += POINT_STRIDE) {
-        ctx.lineTo(points[i], points[i + 1]);
-      }
-    }
-    flush();
+    paintStrokeItems(this.ctx, this.model, items, scale, offX, offY, theme);
   }
+}
+
+/** The part of a 2D canvas context that painting strokes needs. */
+export type StrokePaintContext = Pick<
+  CanvasRenderingContext2D,
+  'setTransform' | 'beginPath' | 'moveTo' | 'lineTo' | 'stroke' | 'fill' | 'strokeStyle' | 'fillStyle' | 'lineWidth' | 'lineCap' | 'lineJoin'
+>;
+
+/**
+ * Paints items in order, batching consecutive low-detail strokes into a single
+ * stroke call.
+ *
+ * A canvas transforms path points when they are added to the path, not when
+ * the path is stroked. The world transform therefore has to be in place before
+ * the first `moveTo` of a batch: whatever transform the previous drawing left
+ * behind (for example the origin-relative one of a filled stroke) would
+ * otherwise send the batch to a different part of the page.
+ */
+export function paintStrokeItems(
+  ctx: StrokePaintContext,
+  model: StrokeModel,
+  items: readonly StrokeItem[],
+  scale: number,
+  offX: number,
+  offY: number,
+  theme: ThemeMode,
+): void {
+  const minLineWidth = LOD_MIN_LINE_PX / scale;
+  let batchColor = '';
+  let batchWidth = 0;
+  let batchOpen = false;
+
+  const flush = () => {
+    if (!batchOpen) return;
+    ctx.strokeStyle = batchColor;
+    ctx.lineWidth = batchWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    batchOpen = false;
+  };
+
+  for (const item of items) {
+    if (item.hidden) continue;
+    const bounds = item.bounds;
+    const extentPx = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) * scale;
+    // A dot (a tap: every control point in one place) has no centreline to draw. Browsers do not
+    // reliably paint a zero-length line, so a dot is always filled as the disc it is.
+    const isDot =
+      bounds.maxX - bounds.minX - item.maxWidth < DOT_EPSILON && bounds.maxY - bounds.minY - item.maxWidth < DOT_EPSILON;
+    const lowDetail = !isDot && (item.maxWidth * scale < LOD_MAX_WIDTH_PX || extentPx < LOD_MAX_EXTENT_PX);
+
+    if (!lowDetail) {
+      flush();
+      fillStrokeItem(ctx as CanvasRenderingContext2D, model, item, scale, offX, offY, theme);
+      continue;
+    }
+
+    // Far-away or tiny ink: variable width and spline detail are sub-pixel
+    // here, so a centreline through the control points is visually identical.
+    const color = inkColor(item.record.color, theme);
+    const width = Math.max(item.averageWidth, minLineWidth);
+    const quantised = Math.round(width * 8) / 8;
+    if (!batchOpen || color !== batchColor || quantised !== batchWidth) {
+      flush();
+      // Path points are in world coordinates, so the world transform must be set before they are added.
+      ctx.setTransform(scale, 0, 0, scale, -offX, -offY);
+      ctx.beginPath();
+      batchOpen = true;
+      batchColor = color;
+      batchWidth = quantised;
+    }
+    const points = item.record.points;
+    ctx.moveTo(points[0], points[1]);
+    for (let i = POINT_STRIDE; i + 2 < points.length; i += POINT_STRIDE) {
+      ctx.lineTo(points[i], points[i + 1]);
+    }
+  }
+  flush();
 }
 
 function byPaintOrder(a: StrokeItem, b: StrokeItem): number {

@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { sanitizeCamera } from '../canvas/math/camera';
 import { BackupError, backupFileName, exportBackup, importBackup, parseBackupText } from '../db/backup';
 import { SECTION_COLORS, createNotebook, createPage, createSection, newId } from '../db/factories';
-import { db, flushAll, setPersistenceErrorHandler, writeQueue } from '../db/persistence';
+import { db, flushAll, setPersistenceErrorHandler, setPersistenceStatusHandler, writeQueue } from '../db/persistence';
 import {
   deleteNotebookCascade,
   deletePagesCascade,
@@ -18,6 +18,7 @@ import {
   loadWorkspace,
 } from '../db/repositories';
 import { seedIfEmpty } from '../db/seed';
+import type { SaveStatus } from '../db/writeQueue';
 import type {
   CameraState,
   Notebook,
@@ -33,21 +34,13 @@ import type {
 import { MAX_PAGE_DEPTH } from '../types';
 import { getActiveEngine } from './engineRegistry';
 import { moveItem, normalizePageList, pagesOfSection } from './pageTree';
+import type { InkKind, RecentColors } from './palette';
+import { addRecentColor, readRecentColors } from './palette';
+import { DEFAULT_TOOLS, readTools } from './toolSettings';
 
-export const PEN_COLORS: readonly string[] = ['#000000', '#e03131', '#1971c2', '#2f9e44', '#f08c00', '#7048e8'];
-export const PEN_SIZES: readonly number[] = [1.5, 2.5, 4, 6.5];
-export const HIGHLIGHTER_COLORS: readonly string[] = ['#ffe45c', '#9cf08f', '#ffa8cf', '#8fd6ff', '#ffc078'];
-export const HIGHLIGHTER_SIZES: readonly number[] = [12, 18, 26];
+export { HIGHLIGHTER_SIZES, PEN_SIZES } from './toolSettings';
 
-const DEFAULT_TOOLS: ToolSettings = {
-  tool: 'pen',
-  penColor: PEN_COLORS[0],
-  penSize: PEN_SIZES[1],
-  highlighterColor: HIGHLIGHTER_COLORS[0],
-  highlighterSize: HIGHLIGHTER_SIZES[1],
-};
 
-const TOOL_IDS: readonly ToolId[] = ['pen', 'highlighter', 'eraser', 'lasso', 'text', 'pan'];
 const THEME_STORAGE_KEY = 'inkwell.theme';
 export const DEFAULT_TEXT_BOX_WIDTH = 340;
 /** Offsets that put the caret of a new text box right under the click position. */
@@ -83,11 +76,15 @@ export interface AppState {
   theme: ThemeMode;
   sidebarCollapsed: boolean;
   tools: ToolSettings;
+  /** Custom ink colours that were used, most recent first, per tool. */
+  recentColors: RecentColors;
   zoom: number;
   canUndo: boolean;
   canRedo: boolean;
   toast: Toast | null;
   confirmRequest: ConfirmRequest | null;
+  /** Whether every change has reached local storage. Changes when an action ends, never per pointer move. */
+  saveStatus: SaveStatus;
 
   init(): Promise<void>;
   selectNotebook(notebookId: string): Promise<void>;
@@ -119,6 +116,8 @@ export interface AppState {
 
   setTool(tool: ToolId): void;
   updateTools(patch: Partial<ToolSettings>): void;
+  /** Records a custom colour as recently used for the pen or the highlighter. */
+  rememberColor(kind: InkKind, color: string): void;
   setThemePreference(preference: ThemePreference): void;
   toggleSidebar(): void;
   setHistoryState(canUndo: boolean, canRedo: boolean): void;
@@ -153,20 +152,6 @@ function applyThemeToDocument(theme: ThemeMode, preference: ThemePreference): vo
 
 function readThemePreference(value: unknown): ThemePreference {
   return value === 'light' || value === 'dark' || value === 'system' ? value : 'system';
-}
-
-function readTools(value: unknown): ToolSettings {
-  if (typeof value !== 'object' || value === null) return { ...DEFAULT_TOOLS };
-  const raw = value as Partial<Record<keyof ToolSettings, unknown>>;
-  const positive = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : fallback);
-  const text = (v: unknown, fallback: string) => (typeof v === 'string' && v ? v : fallback);
-  return {
-    tool: TOOL_IDS.includes(raw.tool as ToolId) ? (raw.tool as ToolId) : DEFAULT_TOOLS.tool,
-    penColor: text(raw.penColor, DEFAULT_TOOLS.penColor),
-    penSize: positive(raw.penSize, DEFAULT_TOOLS.penSize),
-    highlighterColor: text(raw.highlighterColor, DEFAULT_TOOLS.highlighterColor),
-    highlighterSize: positive(raw.highlighterSize, DEFAULT_TOOLS.highlighterSize),
-  };
 }
 
 const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
@@ -300,6 +285,7 @@ export const useAppStore = create<AppState>((set, get) => {
       theme,
       sidebarCollapsed: workspace.settings.get('sidebarCollapsed') === true,
       tools: readTools(workspace.settings.get('tools')),
+      recentColors: readRecentColors(workspace.settings.get('recentColors')),
     });
 
     const lastPageId = workspace.settings.get('lastPageId');
@@ -328,18 +314,27 @@ export const useAppStore = create<AppState>((set, get) => {
     theme: resolveTheme('system'),
     sidebarCollapsed: false,
     tools: { ...DEFAULT_TOOLS },
+    recentColors: { pen: [], highlighter: [] },
     zoom: 1,
     canUndo: false,
     canRedo: false,
     toast: null,
     confirmRequest: null,
+    saveStatus: 'saved',
 
     init() {
       if (!initPromise) {
         setPersistenceErrorHandler((error) => {
           console.error('Failed to save changes', error);
-          get().notify('Could not save recent changes to local storage.', 'error');
+          const full = error instanceof DOMException && error.name === 'QuotaExceededError';
+          get().notify(
+            full
+              ? 'Recent changes could not be saved: this browser has no storage space left for Inkwell.'
+              : 'Could not save recent changes to local storage.',
+            'error',
+          );
         });
+        setPersistenceStatusHandler((saveStatus) => set({ saveStatus }));
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
           const { themePreference } = get();
           if (themePreference !== 'system') return;
@@ -605,6 +600,15 @@ export const useAppStore = create<AppState>((set, get) => {
       const tools = { ...get().tools, ...patch };
       set({ tools });
       writeQueue.putSetting('tools', tools);
+    },
+
+    rememberColor(kind, color) {
+      const current = get().recentColors;
+      const next = addRecentColor(current[kind], kind, color);
+      if (next.length === current[kind].length && next.every((entry, index) => entry === current[kind][index])) return;
+      const recentColors = { ...current, [kind]: next };
+      set({ recentColors });
+      writeQueue.putSetting('recentColors', recentColors);
     },
 
     setThemePreference(preference) {

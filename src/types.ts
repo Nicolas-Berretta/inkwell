@@ -151,8 +151,12 @@ export interface SettingRecord {
 
 export type ToolId = 'pen' | 'highlighter' | 'eraser' | 'lasso' | 'text' | 'pan';
 
+/** How the Lasso tool marks out a selection: a freeform outline or a rectangle. */
+export type LassoMode = 'freeform' | 'rectangle';
+
 export interface ToolSettings {
   tool: ToolId;
+  lassoMode: LassoMode;
   penColor: string;
   penSize: number;
   highlighterColor: string;

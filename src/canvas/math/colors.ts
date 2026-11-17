@@ -1,7 +1,7 @@
 /**
  * Render-time colour mapping. Stored stroke colours are never modified; the
  * theme only changes how they are painted, so "black" ink reads as white on a
- * dark page (and white as black), exactly like OneNote.
+ * dark page (and white as black), as most note-taking apps do.
  */
 import type { ThemeMode } from '../../types';
 

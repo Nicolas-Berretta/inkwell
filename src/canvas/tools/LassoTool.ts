@@ -1,9 +1,12 @@
 /**
  * Lasso selection for handwritten strokes and images.
  *
- *   - Drag on empty space draws a freeform lasso; strokes and unlocked images
- *     that are mostly inside it become selected. A plain click selects the
- *     stroke under it or, when there is none, the unlocked image under it.
+ *   - Drag on empty space marks out an area: a freeform outline or, in
+ *     rectangle mode, an axis-aligned box. Either way the same rule decides
+ *     what is selected: a stroke when at least 60% of its control points are
+ *     inside the area, an unlocked image when at least 60% of it is. A plain
+ *     click selects the stroke under it or, when there is none, the unlocked
+ *     image under it.
  *   - Drag inside the selection frame moves everything selected.
  *   - A single selected image shows corner handles; dragging one resizes the
  *     image, keeping its aspect ratio.
@@ -38,6 +41,8 @@ const MIN_IMAGE_SIZE_PX = 24;
 type Mode =
   | { kind: 'idle' }
   | { kind: 'lasso'; polygon: number[]; startSx: number; startSy: number; moved: boolean }
+  /** Rectangle selection being dragged from (`startX`, `startY`) to (`x`, `y`). */
+  | { kind: 'marquee'; startX: number; startY: number; x: number; y: number; startSx: number; startSy: number; moved: boolean }
   | { kind: 'drag'; startX: number; startY: number; dx: number; dy: number }
   | { kind: 'resize'; imageId: string; corner: Corner; start: Box; box: Box };
 
@@ -94,6 +99,18 @@ export class LassoTool implements EngineTool {
     } else if (this.frameContains(pointer.x, pointer.y)) {
       this.mode = { kind: 'drag', startX: pointer.x, startY: pointer.y, dx: 0, dy: 0 };
       this.host.setHidden(this.selected, true);
+    } else if (this.host.settings().lassoMode === 'rectangle') {
+      this.clearSelection();
+      this.mode = {
+        kind: 'marquee',
+        startX: pointer.x,
+        startY: pointer.y,
+        x: pointer.x,
+        y: pointer.y,
+        startSx: pointer.sx,
+        startSy: pointer.sy,
+        moved: false,
+      };
     } else {
       this.clearSelection();
       this.mode = {
@@ -118,6 +135,10 @@ export class LassoTool implements EngineTool {
     } else if (mode.kind === 'resize') {
       mode.box = resizeFromCorner(mode.start, mode.corner, latest.x, latest.y, MIN_IMAGE_SIZE_PX / this.host.camera().zoom);
       this.host.previewImage(mode.imageId, mode.box);
+    } else if (mode.kind === 'marquee') {
+      mode.x = latest.x;
+      mode.y = latest.y;
+      if (Math.hypot(latest.sx - mode.startSx, latest.sy - mode.startSy) > CLICK_SLOP_PX) mode.moved = true;
     } else {
       const minGap = MIN_LASSO_POINT_GAP_PX / this.host.camera().zoom;
       for (const pointer of pointers) {
@@ -152,6 +173,10 @@ export class LassoTool implements EngineTool {
       this.recomputeBounds();
     } else if (mode.kind === 'lasso') {
       if (mode.moved && mode.polygon.length >= 6) this.selectInside(mode.polygon);
+      else this.selectAt(pointer.x, pointer.y);
+    } else if (mode.kind === 'marquee') {
+      // The rectangle is handed to the same selection rule as a freeform outline.
+      if (mode.moved) this.selectInside(rectanglePolygon(mode.startX, mode.startY, pointer.x, pointer.y));
       else this.selectAt(pointer.x, pointer.y);
     }
     this.host.requestOverlay();
@@ -239,6 +264,15 @@ export class LassoTool implements EngineTool {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+    }
+
+    if (mode.kind === 'marquee' && mode.moved) {
+      const x0 = Math.round(Math.min(mode.startX, mode.x) * view.scale - view.offX);
+      const y0 = Math.round(Math.min(mode.startY, mode.y) * view.scale - view.offY);
+      const x1 = Math.round(Math.max(mode.startX, mode.x) * view.scale - view.offX);
+      const y1 = Math.round(Math.max(mode.startY, mode.y) * view.scale - view.offY);
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0, y1 - y0);
     }
 
     const single = this.singleImage();
@@ -350,6 +384,15 @@ export class LassoTool implements EngineTool {
     }
     this.bounds = bounds;
   }
+}
+
+/** Corners of the axis-aligned rectangle spanned by two points, as a closed outline. */
+export function rectanglePolygon(ax: number, ay: number, bx: number, by: number): number[] {
+  const minX = Math.min(ax, bx);
+  const maxX = Math.max(ax, bx);
+  const minY = Math.min(ay, by);
+  const maxY = Math.max(ay, by);
+  return [minX, minY, maxX, minY, maxX, maxY, minX, maxY];
 }
 
 /** The highlighter canvas sits above the pen canvas; within a layer, higher order wins. */

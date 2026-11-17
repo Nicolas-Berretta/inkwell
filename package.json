@@ -1,9 +1,9 @@
 {
-  "name": "onenote-clone",
+  "name": "inkwell",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Local-first OneNote-style notebook: infinite ink canvas plus rich text, stored entirely in IndexedDB.",
+  "description": "Inkwell: a local-first notebook with an infinite ink canvas plus rich text, stored entirely in IndexedDB.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

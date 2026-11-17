@@ -1,6 +1,6 @@
 # Inkwell
 
-A local-first, OneNote-style notebook: an infinite ink canvas combined with rich-text
+A local-first notebook: an infinite ink canvas combined with rich-text
 blocks, organized as Notebooks → Sections → Pages. Everything is stored in your
 browser's IndexedDB. There is no server and no cloud dependency.
 
@@ -45,7 +45,7 @@ Tool shortcuts, active whenever you are not typing:
 | P | Pen |
 | H | Highlighter |
 | E | Eraser (removes whole strokes) |
-| L | Lasso select strokes and images (drag inside the selection to move it) |
+| L | Lasso select strokes and images, freeform or rectangle (drag inside the selection to move it) |
 | T | Text (click the canvas to place a text box) |
 | V | Hand / pan |
 
@@ -65,6 +65,25 @@ stroke is replaced by the clean shape, with a brief highlight to confirm it.
 
 Pen strokes have round ends and round corners, with a gentle variation in width from
 pen pressure or, without a pressure-sensitive pen, from drawing speed.
+
+### Colors
+
+The pen and highlighter each show a few favourite colours in the toolbar. The arrow
+next to them opens the full palette: 24 pen colours and 12 highlighter colours, any
+colour you like through **Custom color…**, and your last 8 custom colours, remembered
+per tool. The selected colour is ringed, and a custom one is added to the toolbar so
+you can always see what you are using. In dark mode only black and white ink swap
+(black ink shows as white); every other colour is painted as chosen.
+
+### Selecting
+
+With the Lasso tool active, two buttons above the toolbar choose how you mark out a
+selection: a **freeform lasso** or a **rectangle**. The choice is remembered. Both
+use the same rule: a stroke is selected when at least 60% of its points are inside the
+outline, and an image when at least 60% of it is. Locked images are never selected.
+Clicking without dragging selects the stroke or image under the pointer, or clears the
+selection on empty space. Everything after that (moving, resizing an image, copy,
+cut, duplicate, delete, undo) works the same way in both modes.
 
 ### Context menu, copy and paste
 
@@ -120,6 +139,13 @@ stay crisp at any zoom level, and thin out and fade when zoomed far out.
 
 - All data lives in IndexedDB for the origin you run the app on. Clearing site data
   for `localhost:5173` deletes it, so export backups regularly.
+- Every action is saved the moment it ends: a finished stroke, an erase, a move, a
+  paste, an image change. Each action is one IndexedDB write (about 2 ms), so nothing is
+  lost if the browser crashes right afterwards. Typing in a text box is saved a quarter
+  of a second after you start, and immediately when you leave the box.
+- The top bar shows **Saved** when everything is stored. If a write fails (for example
+  because the browser has run out of storage space), it shows **Not saved. Retry**;
+  the unsaved changes are kept and are saved by the retry or by your next change.
 - Images are stored as binary data in their own table, separate from the small records
   that say where each image is, so moving an image never rewrites its pixels. Deleting
   a page, section or notebook deletes its images too.
@@ -167,14 +193,15 @@ src/
   db/
     database.ts              Dexie schema (version 2 adds the image tables)
     repositories.ts          Queries per table
-    writeQueue.ts            Batched, debounced writes with flush on tab hide
+    writeQueue.ts            One write per finished action, save status, retry after a failure
     persistence.ts, seed.ts, factories.ts
     backup.ts                Export, validation, import (format version 2, reads version 1)
     base64.ts                Binary data in backup files
     search.ts                Title and text search
   store/                     Zustand app store, page tree helpers, canvasActions.ts
-                             (clipboard, image and object commands)
-  components/                Sidebar, toolbar, top bar, canvas view, context menu, text boxes
+                             (clipboard, image and object commands), palette.ts (colours)
+  components/                Sidebar, toolbar, colour palette, top bar, save status,
+                             canvas view, context menu, text boxes
   hooks/                     Tool keyboard shortcuts, canvas clipboard shortcuts
   styles/                    Design tokens (light/dark) and component CSS
 ```

@@ -4,9 +4,12 @@
  * Components that buffer changes (debounced text edits, the engine's camera
  * timer) register a "flusher"; when the tab is hidden or closed every flusher
  * runs first and then the write queue is written out, so nothing typed or
- * drawn is lost on a normal close or reload.
+ * drawn is lost on a normal close or reload. The write queue itself hands every
+ * finished action to IndexedDB right away, so a crash loses at most what was
+ * still buffered in such a component (a fraction of a second of typing).
  */
 import { AppDatabase } from './database';
+import type { SaveStatus } from './writeQueue';
 import { WriteQueue } from './writeQueue';
 
 let errorHandler: (error: unknown) => void = (error) => console.error('Failed to save changes', error);
@@ -16,8 +19,20 @@ export function setPersistenceErrorHandler(handler: (error: unknown) => void): v
   errorHandler = handler;
 }
 
+let statusHandler: (status: SaveStatus) => void = () => undefined;
+
+/** Routes save-status changes (saved / saving / error) to the UI. */
+export function setPersistenceStatusHandler(handler: (status: SaveStatus) => void): void {
+  statusHandler = handler;
+}
+
 export const db = new AppDatabase();
-export const writeQueue = new WriteQueue(db, 250, (error) => errorHandler(error));
+export const writeQueue = new WriteQueue(
+  db,
+  0,
+  (error) => errorHandler(error),
+  (status) => statusHandler(status),
+);
 
 const flushers = new Set<() => void>();
 

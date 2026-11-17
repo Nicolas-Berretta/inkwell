@@ -14,7 +14,8 @@ import type { TextBoxRecord } from '../types';
 import { FormatBar } from './FormatBar';
 
 const EXTENSIONS = [StarterKit, TaskList, TaskItem.configure({ nested: true })];
-const SAVE_DELAY_MS = 300;
+/** Typing is saved this long after the first unsaved key press, and immediately when the box loses focus. */
+const SAVE_DELAY_MS = 250;
 const MIN_WIDTH = 140;
 const MAX_WIDTH = 1600;
 

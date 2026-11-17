@@ -1,9 +1,10 @@
-import { Eraser, Hand, Highlighter, ImagePlus, Lasso, PenLine, Redo2, Type, Undo2 } from 'lucide-react';
-import type { CSSProperties, ReactNode } from 'react';
-import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useAppStore } from '../store/appStore';
+import { Eraser, Hand, Highlighter, ImagePlus, Lasso, PenLine, Redo2, SquareDashed, Type, Undo2 } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { HIGHLIGHTER_SIZES, PEN_SIZES, useAppStore } from '../store/appStore';
 import { openImagePicker } from '../store/canvasActions';
 import { getActiveEngine } from '../store/engineRegistry';
-import type { ToolId } from '../types';
+import type { LassoMode, ToolId } from '../types';
+import { ColorPalette } from './ColorPalette';
 
 const TOOLS: ReadonlyArray<{ id: ToolId; label: string; shortcut: string; icon: ReactNode }> = [
   { id: 'pen', label: 'Pen', shortcut: 'P', icon: <PenLine size={18} /> },
@@ -14,22 +15,7 @@ const TOOLS: ReadonlyArray<{ id: ToolId; label: string; shortcut: string; icon: 
   { id: 'pan', label: 'Pan', shortcut: 'V', icon: <Hand size={18} /> },
 ];
 
-const COLOR_NAMES: Record<string, string> = {
-  '#000000': 'Black',
-  '#e03131': 'Red',
-  '#1971c2': 'Blue',
-  '#2f9e44': 'Green',
-  '#f08c00': 'Orange',
-  '#7048e8': 'Purple',
-  '#ffe45c': 'Yellow',
-  '#9cf08f': 'Green',
-  '#ffa8cf': 'Pink',
-  '#8fd6ff': 'Blue',
-  '#ffc078': 'Orange',
-};
-
 interface ToolOptionsProps {
-  colors: readonly string[];
   sizes: readonly number[];
   color: string;
   size: number;
@@ -38,23 +24,11 @@ interface ToolOptionsProps {
   kind: 'pen' | 'highlighter';
 }
 
-function ToolOptions({ colors, sizes, color, size, onColor, onSize, kind }: ToolOptionsProps) {
+function ToolOptions({ sizes, color, size, onColor, onSize, kind }: ToolOptionsProps) {
   const largest = sizes[sizes.length - 1];
   return (
     <div className="tool-options" role="group" aria-label={kind === 'pen' ? 'Pen options' : 'Highlighter options'}>
-      {colors.map((c) => (
-        <button
-          key={c}
-          type="button"
-          className={c === color ? 'swatch is-active' : 'swatch'}
-          data-ink={c === '#000000' ? 'adaptive' : undefined}
-          style={{ '--swatch': c } as CSSProperties}
-          aria-label={COLOR_NAMES[c] ?? c}
-          aria-pressed={c === color}
-          title={COLOR_NAMES[c] ?? c}
-          onClick={() => onColor(c)}
-        />
-      ))}
+      <ColorPalette kind={kind} color={color} onColor={onColor} />
       <span className="toolbar-divider" />
       {sizes.map((s) => (
         <button
@@ -67,6 +41,33 @@ function ToolOptions({ colors, sizes, color, size, onColor, onSize, kind }: Tool
           onClick={() => onSize(s)}
         >
           <span className="size-dot" style={{ width: 4 + (s / largest) * 12, height: 4 + (s / largest) * 12 }} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const LASSO_MODES: ReadonlyArray<{ mode: LassoMode; label: string; icon: ReactNode }> = [
+  { mode: 'freeform', label: 'Freeform lasso', icon: <Lasso size={17} /> },
+  { mode: 'rectangle', label: 'Rectangle selection', icon: <SquareDashed size={17} /> },
+];
+
+/** Freeform / rectangle toggle shown while the Lasso tool is active. */
+function LassoOptions({ mode, onMode }: { mode: LassoMode; onMode: (mode: LassoMode) => void }) {
+  return (
+    <div className="tool-options" role="group" aria-label="Lasso options">
+      {LASSO_MODES.map((option) => (
+        <button
+          key={option.mode}
+          type="button"
+          className={option.mode === mode ? 'size-option lasso-mode is-active' : 'size-option lasso-mode'}
+          aria-label={option.label}
+          aria-pressed={option.mode === mode}
+          title={option.label}
+          data-lasso-mode={option.mode}
+          onClick={() => onMode(option.mode)}
+        >
+          {option.icon}
         </button>
       ))}
     </div>
@@ -86,7 +87,6 @@ export function Toolbar() {
       {tools.tool === 'pen' ? (
         <ToolOptions
           kind="pen"
-          colors={PEN_COLORS}
           sizes={PEN_SIZES}
           color={tools.penColor}
           size={tools.penSize}
@@ -97,7 +97,6 @@ export function Toolbar() {
       {tools.tool === 'highlighter' ? (
         <ToolOptions
           kind="highlighter"
-          colors={HIGHLIGHTER_COLORS}
           sizes={HIGHLIGHTER_SIZES}
           color={tools.highlighterColor}
           size={tools.highlighterSize}
@@ -105,6 +104,7 @@ export function Toolbar() {
           onSize={(highlighterSize) => updateTools({ highlighterSize })}
         />
       ) : null}
+      {tools.tool === 'lasso' ? <LassoOptions mode={tools.lassoMode} onMode={(lassoMode) => updateTools({ lassoMode })} /> : null}
       <div className="toolbar" role="toolbar" aria-label="Drawing tools">
         {TOOLS.map((tool) => (
           <button
